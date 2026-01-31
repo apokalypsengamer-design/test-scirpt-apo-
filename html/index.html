@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AntiCheat Test Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Effects -->
+    <div class="bg-grid"></div>
+    <div class="bg-gradient"></div>
+    <div class="scan-line"></div>
+    
+    <div id="menu-container" class="hidden">
+        <!-- Decorative Corner Elements -->
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+        
+        <!-- Header -->
+        <div class="menu-header">
+            <div class="header-content">
+                <div class="title-section">
+                    <div class="glitch-wrapper">
+                        <h1 class="title glitch" data-text="ANTICHEAT">ANTICHEAT</h1>
+                    </div>
+                    <span class="subtitle">TEST SUITE v1.0</span>
+                </div>
+                <div class="header-status">
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span class="status-text">SYSTEM ACTIVE</span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-line"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="menu-content">
+            <!-- Movement Exploits -->
+            <div class="category" data-category="movement">
+                <div class="category-header">
+                    <div class="category-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2 class="category-title">MOVEMENT EXPLOITS</h2>
+                    <div class="category-line"></div>
+                </div>
+                
+                <div class="test-grid">
+                    <!-- Speed Hack -->
+                    <div class="test-card">
+                        <div class="card-header">
+                            <span class="test-label">SPEED MULTIPLIER</span>
+                            <span class="test-status" id="speed-status" data-status="inactive">
+                                <span class="status-icon"></span>
+                                INACTIVE
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="slider-container">
+                                <input type="range" id="speed-slider" class="custom-slider" min="1" max="5" step="0.1" value="2">
+                                <div class="slider-track"></div>
+                            </div>
+                            <div class="control-row">
+                                <div class="value-box">
+                                    <span class="value-label">MULTIPLIER</span>
+                                    <span class="value-display" id="speed-value">2.0x</span>
+                                </div>
+                                <button class="btn-primary" data-action="speed">
+                                    <span class="btn-text">TOGGLE</span>
+                                    <span class="btn-glow"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Noclip -->
+                    <div class="test-card">
+                        <div class="card-header">
+                            <span class="test-label">NOCLIP</span>
+                            <span class="test-status" id="noclip-status" data-status="inactive">
+                                <span class="status-icon"></span>
+                                INACTIVE
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="slider-container">
+                                <input type="range" id="noclip-slider" class="custom-slider" min="0.5" max="10" step="0.5" value="2">
+                                <div class="slider-track"></div>
+                            </div>
+                            <div class="control-row">
+                                <div class="value-box">
+                                    <span class="value-label">SPEED</span>
+                                    <span class="value-display" id="noclip-value">2.0</span>
+                                </div>
+                                <button class="btn-primary" data-action="noclip">
+                                    <span class="btn-text">TOGGLE</span>
+                                    <span class="btn-glow"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fly Mode -->
+                    <div class="test-card">
+                        <div class="card-header">
+                            <span class="test-label">FLY MODE</span>
+                            <span class="test-status" id="fly-status" data-status="inactive">
+                                <span class="status-icon"></span>
+                                INACTIVE
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="slider-container">
+                                <input type="range" id="fly-slider" class="custom-slider" min="1" max="20" step="1" value="5">
+                                <div class="slider-track"></div>
+                            </div>
+                            <div class="control-row">
+                                <div class="value-box">
+                                    <span class="value-label">SPEED</span>
+                                    <span class="value-display" id="fly-value">5.0</span>
+                                </div>
+                                <button class="btn-primary" data-action="fly">
+                                    <span class="btn-text">TOGGLE</span>
+                                    <span class="btn-glow"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Super Jump -->
+                    <div class="test-card">
+                        <div class="card-header">
+                            <span class="test-label">SUPER JUMP</span>
+                            <span class="test-status" id="superjump-status" data-status="inactive">
+                                <span class="status-icon"></span>
+                                INACTIVE
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="slider-container">
+                                <input type="range" id="superjump-slider" class="custom-slider" min="1" max="10" step="0.5" value="2">
+                                <div class="slider-track"></div>
+                            </div>
+                            <div class="control-row">
+                                <div class="value-box">
+                                    <span class="value-label">HEIGHT</span>
+                                    <span class="value-display" id="superjump-value">2.0x</span>
+                                </div>
+                                <button class="btn-primary" data-action="superjump">
+                                    <span class="btn-text">TOGGLE</span>
+                                    <span class="btn-glow"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teleportation -->
+            <div class="category" data-category="teleport">
+                <div class="category-header">
+                    <div class="category-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 2v4m0 12v4M2 12h4m12 0h4" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h2 class="category-title">TELEPORTATION</h2>
+                    <div class="category-line"></div>
+                </div>
+                
+                <div class="teleport-grid">
+                    <!-- TP Forward -->
+                    <div class="teleport-card">
+                        <div class="tp-header">
+                            <span class="tp-label">FORWARD TELEPORT</span>
+                        </div>
+                        <div class="tp-controls">
+                            <div class="input-group">
+                                <input type="number" id="tp-distance" class="custom-input" min="1" max="1000" value="10">
+                                <span class="input-unit">METERS</span>
+                            </div>
+                            <button class="btn-secondary" data-action="tp-forward">
+                                <span class="btn-text">EXECUTE</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TP Waypoint -->
+                    <div class="teleport-card">
+                        <div class="tp-header">
+                            <span class="tp-label">WAYPOINT TELEPORT</span>
+                        </div>
+                        <div class="tp-controls">
+                            <button class="btn-secondary btn-full" data-action="tp-waypoint">
+                                <span class="btn-text">EXECUTE</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TP Coords -->
+                    <div class="teleport-card teleport-card-wide">
+                        <div class="tp-header">
+                            <span class="tp-label">COORDINATE TELEPORT</span>
+                        </div>
+                        <div class="tp-controls coords-grid">
+                            <div class="coord-group">
+                                <label class="coord-label">X</label>
+                                <input type="number" id="tp-x" class="custom-input" placeholder="0.0">
+                            </div>
+                            <div class="coord-group">
+                                <label class="coord-label">Y</label>
+                                <input type="number" id="tp-y" class="custom-input" placeholder="0.0">
+                            </div>
+                            <div class="coord-group">
+                                <label class="coord-label">Z</label>
+                                <input type="number" id="tp-z" class="custom-input" placeholder="0.0">
+                            </div>
+                            <button class="btn-secondary" data-action="tp-coords">
+                                <span class="btn-text">EXECUTE</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coming Soon -->
+            <div class="category category-locked" data-category="future">
+                <div class="category-header">
+                    <div class="category-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h2 class="category-title">ADDITIONAL MODULES</h2>
+                    <div class="category-line"></div>
+                    <span class="locked-badge">COMING SOON</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="menu-footer">
+            <button class="btn-danger" data-action="stop-all">
+                <span class="danger-icon">⚠</span>
+                <span class="btn-text">EMERGENCY STOP</span>
+                <span class="btn-glow"></span>
+            </button>
+            <div class="footer-info">
+                <span class="hotkey-hint">Press <kbd>F6</kbd> to close interface</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
