@@ -12,10 +12,10 @@ namespace FiveM_AntiCheat_Executor
 {
     public class OverlayWindow
     {
-        private Sdl2Window _window;
-        private GraphicsDevice _graphicsDevice;
-        private CommandList _commandList;
-        private ImGuiController _controller;
+        private Sdl2Window _window = null!;
+        private GraphicsDevice _graphicsDevice = null!;
+        private CommandList _commandList = null!;
+        private ImGuiController _controller = null!;
         private MemoryManager _memory;
 
         private SpeedHack _speedHack;
@@ -29,6 +29,7 @@ namespace FiveM_AntiCheat_Executor
 
         private bool _menuOpen = true;
         private int _selectedTab = 0;
+        private GlobalHotkey _hotkey;
         
         private float _tpDistance = 10f;
         private float _tpX = 0f;
@@ -49,6 +50,8 @@ namespace FiveM_AntiCheat_Executor
             _esp = new ESP(_memory);
             _aimbot = new Aimbot(_memory);
             _radarHack = new RadarHack(_memory);
+
+            _hotkey = new GlobalHotkey((menuState) => _menuOpen = menuState);
         }
 
         public void Start()
@@ -64,7 +67,7 @@ namespace FiveM_AntiCheat_Executor
             _commandList = _graphicsDevice.ResourceFactory.CreateCommandList();
             _controller = new ImGuiController(_graphicsDevice, _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription, _window.Width, _window.Height);
 
-            _window.KeyDown += OnKeyDown;
+            _hotkey.Start();
 
             var stylePtr = ImGui.GetStyle();
             SetupImGuiStyle(ref stylePtr);
@@ -100,14 +103,6 @@ namespace FiveM_AntiCheat_Executor
             _controller.Dispose();
             _commandList.Dispose();
             _graphicsDevice.Dispose();
-        }
-
-        private void OnKeyDown(KeyEvent e)
-        {
-            if (e.Key == Key.F6)
-            {
-                _menuOpen = !_menuOpen;
-            }
         }
 
         private void Update()
@@ -574,7 +569,7 @@ namespace FiveM_AntiCheat_Executor
             }
 
             ImGui.Spacing();
-            var info = "Press F6 to toggle | Randomized values for detection evasion";
+            var info = "Press INSERT to toggle | Randomized values for detection evasion";
             var infoSize = ImGui.CalcTextSize(info);
             ImGui.SetCursorPosX((1100 - infoSize.X) / 2);
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.48f, 0.55f, 0.58f, 1f));
