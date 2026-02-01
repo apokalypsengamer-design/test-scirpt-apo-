@@ -369,9 +369,17 @@ namespace FiveM_AntiCheat_Executor
 
             ImGui.Columns(2, "AimbotCols", false);
 
-            ImGui.Checkbox("Enable Aimbot", ref _aimbot.Enabled);
-            ImGui.Checkbox("Silent Aim", ref _aimbot.SilentAim);
-            ImGui.Checkbox("Smooth Aim", ref _aimbot.SmoothAim);
+            bool aimbotEnabled = _aimbot.Enabled;
+            if (ImGui.Checkbox("Enable Aimbot", ref aimbotEnabled))
+                _aimbot.Enabled = aimbotEnabled;
+            
+            bool silentAim = _aimbot.SilentAim;
+            if (ImGui.Checkbox("Silent Aim", ref silentAim))
+                _aimbot.SilentAim = silentAim;
+            
+            bool smoothAim = _aimbot.SmoothAim;
+            if (ImGui.Checkbox("Smooth Aim", ref smoothAim))
+                _aimbot.SmoothAim = smoothAim;
 
             float fov = _aimbot.FOV;
             ImGui.SetNextItemWidth(250);
@@ -420,11 +428,21 @@ namespace FiveM_AntiCheat_Executor
             ImGui.Separator();
             ImGui.Spacing();
 
-            ImGui.Checkbox("Enable Radar Hack", ref _radarHack.Enabled);
+            bool radarEnabled = _radarHack.Enabled;
+            if (ImGui.Checkbox("Enable Radar Hack", ref radarEnabled))
+                _radarHack.Enabled = radarEnabled;
+            
             ImGui.SameLine(300);
-            ImGui.Checkbox("Show Invisible Players", ref _radarHack.ShowInvisiblePlayers);
+            
+            bool showInvisible = _radarHack.ShowInvisiblePlayers;
+            if (ImGui.Checkbox("Show Invisible Players", ref showInvisible))
+                _radarHack.ShowInvisiblePlayers = showInvisible;
+            
             ImGui.SameLine(600);
-            ImGui.Checkbox("Show All Blips", ref _radarHack.ShowAllBlips);
+            
+            bool showAllBlips = _radarHack.ShowAllBlips;
+            if (ImGui.Checkbox("Show All Blips", ref showAllBlips))
+                _radarHack.ShowAllBlips = showAllBlips;
 
             ImGui.EndChild();
         }
@@ -443,15 +461,31 @@ namespace FiveM_AntiCheat_Executor
 
             ImGui.Columns(2, "ESPCols", false);
 
-            ImGui.Checkbox("Enable ESP", ref _esp.Enabled);
-            ImGui.Checkbox("Show Health", ref _esp.ShowHealth);
-            ImGui.Checkbox("Show Armor", ref _esp.ShowArmor);
-            ImGui.Checkbox("Show Name", ref _esp.ShowName);
+            bool espEnabled = _esp.Enabled;
+            if (ImGui.Checkbox("Enable ESP", ref espEnabled))
+                _esp.Enabled = espEnabled;
+            
+            bool showHealth = _esp.ShowHealth;
+            if (ImGui.Checkbox("Show Health", ref showHealth))
+                _esp.ShowHealth = showHealth;
+            
+            bool showArmor = _esp.ShowArmor;
+            if (ImGui.Checkbox("Show Armor", ref showArmor))
+                _esp.ShowArmor = showArmor;
+            
+            bool showName = _esp.ShowName;
+            if (ImGui.Checkbox("Show Name", ref showName))
+                _esp.ShowName = showName;
 
             ImGui.NextColumn();
 
-            ImGui.Checkbox("Show Distance", ref _esp.ShowDistance);
-            ImGui.Checkbox("Show Skeleton", ref _esp.ShowSkeleton);
+            bool showDistance = _esp.ShowDistance;
+            if (ImGui.Checkbox("Show Distance", ref showDistance))
+                _esp.ShowDistance = showDistance;
+            
+            bool showSkeleton = _esp.ShowSkeleton;
+            if (ImGui.Checkbox("Show Skeleton", ref showSkeleton))
+                _esp.ShowSkeleton = showSkeleton;
 
             float maxDist = _esp.MaxDistance;
             ImGui.SetNextItemWidth(250);
