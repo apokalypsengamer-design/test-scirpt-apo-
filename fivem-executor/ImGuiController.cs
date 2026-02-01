@@ -138,7 +138,15 @@ namespace FiveM_AntiCheat_Executor
 
         private byte[] GetEmbeddedResourceBytes(string resourceName)
         {
-            return System.Text.Encoding.UTF8.GetBytes(resourceName == "imgui-vertex.glsl" ? VertexShaderGLSL : FragmentShaderGLSL);
+            string source = resourceName switch
+            {
+                "imgui-vertex.glsl"       => VertexShaderGLSL,
+                "imgui-frag.glsl"         => FragmentShaderGLSL,
+                "imgui-vertex.hlsl.bytes" => VertexShaderHLSL,
+                "imgui-frag.hlsl.bytes"   => FragmentShaderHLSL,
+                _ => throw new NotImplementedException($"No embedded shader for '{resourceName}'.")
+            };
+            return System.Text.Encoding.UTF8.GetBytes(source);
         }
 
         private const string VertexShaderGLSL = @"
@@ -165,6 +173,51 @@ out vec4 outputColor;
 void main()
 {
     outputColor = color * texture(FontTexture, texCoord);
+}";
+
+        private const string VertexShaderHLSL = @"
+cbuffer ProjectionMatrixBuffer : register(b0)
+{
+    float4x4 projection_matrix;
+};
+
+struct VertexInput
+{
+    float2 position : POSITION;
+    float2 texCoord : TEXCOORD0;
+    float4 color    : COLOR0;
+};
+
+struct PixelInput
+{
+    float4 position : SV_POSITION;
+    float4 color    : COLOR0;
+    float2 texCoord : TEXCOORD0;
+};
+
+PixelInput main(VertexInput input)
+{
+    PixelInput output;
+    output.position = mul(float4(input.position, 0.0f, 1.0f), projection_matrix);
+    output.color    = input.color;
+    output.texCoord = input.texCoord;
+    return output;
+}";
+
+        private const string FragmentShaderHLSL = @"
+Texture2D FontTexture : register(t0);
+SamplerState FontSampler : register(s0);
+
+struct PixelInput
+{
+    float4 position : SV_POSITION;
+    float4 color    : COLOR0;
+    float2 texCoord : TEXCOORD0;
+};
+
+float4 main(PixelInput input) : SV_TARGET
+{
+    return input.color * FontTexture.Sample(FontSampler, input.texCoord);
 }";
 
         public void RecreateFontDeviceTexture(GraphicsDevice gd)
