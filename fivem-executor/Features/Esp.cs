@@ -231,6 +231,6 @@ namespace FiveM_AntiCheat_Executor.Features
         public float MaxHealth { get; set; }
         public float Armor { get; set; }
         public bool IsVisible { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }
