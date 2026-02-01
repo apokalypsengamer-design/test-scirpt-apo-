@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Diagnostics;
+using System.Media;
 
 namespace FiveM_AntiCheat_Executor
 {
@@ -12,7 +13,7 @@ namespace FiveM_AntiCheat_Executor
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine(@"
     ╔═══════════════════════════════════════╗
-    ║          Apo´s EXECUTOR               ║
+    ║   FIVEM ANTICHEAT TEST EXECUTOR      ║
     ║            v1.0.0                     ║
     ╚═══════════════════════════════════════╝
             ");
@@ -32,6 +33,9 @@ namespace FiveM_AntiCheat_Executor
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"[+] FiveM process found! PID: {targetProcess.Id}");
                     Console.ResetColor();
+                    
+                    PlaySuccessSound();
+                    Thread.Sleep(500);
                 }
                 else
                 {
@@ -46,7 +50,23 @@ namespace FiveM_AntiCheat_Executor
             var overlay = new OverlayWindow(memory);
 
             Console.WriteLine("[*] Starting overlay...");
+            Console.WriteLine("[*] Press INSERT to toggle menu");
             overlay.Start();
+        }
+
+        static void PlaySuccessSound()
+        {
+            try
+            {
+                Console.Beep(800, 200);
+                Thread.Sleep(50);
+                Console.Beep(1000, 200);
+                Thread.Sleep(50);
+                Console.Beep(1200, 300);
+            }
+            catch
+            {
+            }
         }
     }
 }
