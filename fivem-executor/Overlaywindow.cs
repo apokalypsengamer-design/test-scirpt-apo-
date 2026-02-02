@@ -11,23 +11,23 @@ namespace FiveM_AntiCheat_Executor
 {
     public class OverlayWindow
     {
-        private Sdl2Window _window;
-        private GraphicsDevice _gd;
-        private CommandList _cl;
-        private ImGuiController _controller;
+        private Sdl2Window _window = null!;
+        private GraphicsDevice _gd = null!;
+        private CommandList _cl = null!;
+        private ImGuiController _controller = null!;
         private MemoryManager _memory;
-        private GlobalHotkey _hotkey;
+        private GlobalHotkey _hotkey = null!;
         private bool _menuVisible = true;
 
         // Features
-        private ESP _esp;
-        private Aimbot _aimbot;
-        private Fly _fly;
-        private Noclip _noclip;
-        private SpeedHack _speedHack;
-        private SuperJump _superJump;
-        private Teleport _teleport;
-        private RadarHack _radarHack;
+        private ESP _esp = null!;
+        private Aimbot _aimbot = null!;
+        private Fly _fly = null!;
+        private Noclip _noclip = null!;
+        private SpeedHack _speedHack = null!;
+        private SuperJump _superJump = null!;
+        private Teleport _teleport = null!;
+        private RadarHack _radarHack = null!;
 
         // UI State
         private int _selectedTab = 0;
