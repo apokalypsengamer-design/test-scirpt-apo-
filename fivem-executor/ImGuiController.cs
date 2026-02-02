@@ -9,18 +9,18 @@ namespace FiveM_AntiCheat_Executor
     {
         private GraphicsDevice _gd;
         private bool _frameBegun;
-        private DeviceBuffer _vertexBuffer;
-        private DeviceBuffer _indexBuffer;
-        private DeviceBuffer _projMatrixBuffer;
-        private Texture _fontTexture;
-        private TextureView _fontTextureView;
-        private Shader _vertexShader;
-        private Shader _fragmentShader;
-        private ResourceLayout _layout;
-        private ResourceLayout _textureLayout;
-        private Pipeline _pipeline;
-        private ResourceSet _mainResourceSet;
-        private ResourceSet _fontTextureResourceSet;
+        private DeviceBuffer _vertexBuffer = null!;
+        private DeviceBuffer _indexBuffer = null!;
+        private DeviceBuffer _projMatrixBuffer = null!;
+        private Texture _fontTexture = null!;
+        private TextureView _fontTextureView = null!;
+        private Shader _vertexShader = null!;
+        private Shader _fragmentShader = null!;
+        private ResourceLayout _layout = null!;
+        private ResourceLayout _textureLayout = null!;
+        private Pipeline _pipeline = null!;
+        private ResourceSet _mainResourceSet = null!;
+        private ResourceSet _fontTextureResourceSet = null!;
         private IntPtr _fontAtlasID = (IntPtr)1;
         private int _windowWidth;
         private int _windowHeight;
@@ -305,7 +305,8 @@ namespace FiveM_AntiCheat_Executor
                 return;
             }
 
-            uint totalVBSize = (uint)(draw_data.TotalVtxCount * sizeof(ImDrawVert));
+            uint vertexSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<ImDrawVert>();
+            uint totalVBSize = (uint)(draw_data.TotalVtxCount * vertexSize);
             if (totalVBSize > _vertexBuffer.SizeInBytes)
             {
                 _vertexBuffer.Dispose();
@@ -321,13 +322,13 @@ namespace FiveM_AntiCheat_Executor
 
             for (int i = 0; i < draw_data.CmdListsCount; i++)
             {
-                ImDrawListPtr cmd_list = draw_data.CmdListsRange[i];
+                ImDrawListPtr cmd_list = draw_data.CmdLists[i];
 
                 cl.UpdateBuffer(
                     _vertexBuffer,
-                    vertexOffsetInVertices * (uint)sizeof(ImDrawVert),
+                    vertexOffsetInVertices * vertexSize,
                     cmd_list.VtxBuffer.Data,
-                    (uint)(cmd_list.VtxBuffer.Size * sizeof(ImDrawVert)));
+                    (uint)(cmd_list.VtxBuffer.Size * vertexSize));
 
                 cl.UpdateBuffer(
                     _indexBuffer,
@@ -362,7 +363,7 @@ namespace FiveM_AntiCheat_Executor
 
             for (int n = 0; n < draw_data.CmdListsCount; n++)
             {
-                ImDrawListPtr cmd_list = draw_data.CmdListsRange[n];
+                ImDrawListPtr cmd_list = draw_data.CmdLists[n];
                 for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++)
                 {
                     ImDrawCmdPtr pcmd = cmd_list.CmdBuffer[cmd_i];
