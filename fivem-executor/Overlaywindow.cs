@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Threading;
 using ImGuiNET;
 using Veldrid;
+using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 using FiveM_AntiCheat_Executor.Features;
 
