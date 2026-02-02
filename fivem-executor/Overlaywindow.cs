@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using System.Threading;
+using System.Collections.Generic;
 using ImGuiNET;
 using Veldrid;
 using Veldrid.Sdl2;
@@ -12,505 +13,616 @@ namespace FiveM_AntiCheat_Executor
     public class OverlayWindow
     {
         private Sdl2Window _window = null!;
-        private GraphicsDevice _gd = null!;
-        private CommandList _cl = null!;
+        private GraphicsDevice _graphicsDevice = null!;
+        private CommandList _commandList = null!;
         private ImGuiController _controller = null!;
         private MemoryManager _memory;
-        private GlobalHotkey _hotkey = null!;
-        private bool _menuVisible = true;
 
-        // Features
-        private ESP _esp = null!;
-        private Aimbot _aimbot = null!;
-        private Fly _fly = null!;
-        private Noclip _noclip = null!;
-        private SpeedHack _speedHack = null!;
-        private SuperJump _superJump = null!;
-        private Teleport _teleport = null!;
-        private RadarHack _radarHack = null!;
+        private SpeedHack _speedHack;
+        private Teleport _teleport;
+        private Noclip _noclip;
+        private Fly _fly;
+        private SuperJump _superJump;
+        private ESP _esp;
+        private Aimbot _aimbot;
+        private RadarHack _radarHack;
 
-        // UI State
+        private bool _menuOpen = true;
         private int _selectedTab = 0;
-        private float[] _teleportCoords = new float[3];
+        private GlobalHotkey _hotkey;
+        
+        private float _tpDistance = 10f;
+        private float _tpX = 0f;
+        private float _tpY = 0f;
+        private float _tpZ = 0f;
 
         public OverlayWindow(MemoryManager memory)
         {
             _memory = memory;
-            InitializeFeatures();
-            InitializeWindow();
-            InitializeHotkey();
-        }
-
-        private void InitializeFeatures()
-        {
-            var baseAddress = _memory.GetModuleBaseAddress("FiveM.exe");
-            if (baseAddress == IntPtr.Zero)
-                baseAddress = _memory.GetModuleBaseAddress("GTA5.exe");
             
-            Offsets.Initialize(baseAddress);
+            Offsets.Initialize(_memory.GetModuleBaseAddress("GTA5.exe"));
 
+            _speedHack = new SpeedHack(_memory);
+            _teleport = new Teleport(_memory);
+            _noclip = new Noclip(_memory);
+            _fly = new Fly(_memory);
+            _superJump = new SuperJump(_memory);
             _esp = new ESP(_memory);
             _aimbot = new Aimbot(_memory);
-            _fly = new Fly(_memory);
-            _noclip = new Noclip(_memory);
-            _speedHack = new SpeedHack(_memory);
-            _superJump = new SuperJump(_memory);
-            _teleport = new Teleport(_memory);
             _radarHack = new RadarHack(_memory);
-        }
 
-        private void InitializeWindow()
-        {
-            WindowCreateInfo wci = new WindowCreateInfo
-            {
-                X = 100,
-                Y = 100,
-                WindowWidth = 800,
-                WindowHeight = 600,
-                WindowTitle = "FiveM Executor"
-            };
-
-            _window = VeldridStartup.CreateWindow(ref wci);
-            _window.Resized += () => _controller?.WindowResized(_window.Width, _window.Height);
-
-            _gd = VeldridStartup.CreateGraphicsDevice(_window, new GraphicsDeviceOptions(true, null, true));
-            _cl = _gd.ResourceFactory.CreateCommandList();
-            _controller = new ImGuiController(_gd, _gd.MainSwapchain.Framebuffer.OutputDescription, _window.Width, _window.Height);
-
-            SetupImGuiStyle();
-        }
-
-        private void InitializeHotkey()
-        {
-            _hotkey = new GlobalHotkey((visible) =>
-            {
-                _menuVisible = visible;
-            });
-            _hotkey.Start();
-        }
-
-        private void SetupImGuiStyle()
-        {
-            var style = ImGui.GetStyle();
-            
-            style.WindowRounding = 6.0f;
-            style.FrameRounding = 4.0f;
-            style.GrabRounding = 3.0f;
-            style.ScrollbarRounding = 4.0f;
-            style.WindowBorderSize = 1.0f;
-            style.FrameBorderSize = 0.0f;
-            style.PopupBorderSize = 1.0f;
-
-            var colors = style.Colors;
-            colors[(int)ImGuiCol.WindowBg] = new Vector4(0.10f, 0.10f, 0.10f, 0.95f);
-            colors[(int)ImGuiCol.Border] = new Vector4(0.20f, 0.80f, 0.20f, 0.50f);
-            colors[(int)ImGuiCol.TitleBg] = new Vector4(0.15f, 0.15f, 0.15f, 1.00f);
-            colors[(int)ImGuiCol.TitleBgActive] = new Vector4(0.20f, 0.70f, 0.20f, 1.00f);
-            colors[(int)ImGuiCol.FrameBg] = new Vector4(0.20f, 0.20f, 0.20f, 1.00f);
-            colors[(int)ImGuiCol.FrameBgHovered] = new Vector4(0.25f, 0.75f, 0.25f, 0.40f);
-            colors[(int)ImGuiCol.FrameBgActive] = new Vector4(0.20f, 0.70f, 0.20f, 0.67f);
-            colors[(int)ImGuiCol.Button] = new Vector4(0.25f, 0.75f, 0.25f, 0.40f);
-            colors[(int)ImGuiCol.ButtonHovered] = new Vector4(0.30f, 0.80f, 0.30f, 1.00f);
-            colors[(int)ImGuiCol.ButtonActive] = new Vector4(0.20f, 0.70f, 0.20f, 1.00f);
-            colors[(int)ImGuiCol.Header] = new Vector4(0.25f, 0.75f, 0.25f, 0.31f);
-            colors[(int)ImGuiCol.HeaderHovered] = new Vector4(0.30f, 0.80f, 0.30f, 0.80f);
-            colors[(int)ImGuiCol.HeaderActive] = new Vector4(0.20f, 0.70f, 0.20f, 1.00f);
-            colors[(int)ImGuiCol.CheckMark] = new Vector4(0.30f, 0.90f, 0.30f, 1.00f);
-            colors[(int)ImGuiCol.SliderGrab] = new Vector4(0.28f, 0.78f, 0.28f, 1.00f);
-            colors[(int)ImGuiCol.SliderGrabActive] = new Vector4(0.35f, 0.85f, 0.35f, 1.00f);
-            colors[(int)ImGuiCol.Tab] = new Vector4(0.20f, 0.20f, 0.20f, 0.86f);
-            colors[(int)ImGuiCol.TabHovered] = new Vector4(0.30f, 0.80f, 0.30f, 0.80f);
-            colors[(int)ImGuiCol.TabActive] = new Vector4(0.25f, 0.75f, 0.25f, 1.00f);
-            colors[(int)ImGuiCol.TextSelectedBg] = new Vector4(0.25f, 0.75f, 0.25f, 0.35f);
+            _hotkey = new GlobalHotkey((menuState) => _menuOpen = menuState);
         }
 
         public void Start()
         {
-            Thread renderThread = new Thread(RenderLoop);
-            renderThread.IsBackground = false;
-            renderThread.Start();
-        }
+            VeldridStartup.CreateWindowAndGraphicsDevice(
+                new WindowCreateInfo(50, 50, 1100, 750, WindowState.Normal, "FiveM Executor"),
+                new GraphicsDeviceOptions(true, null, true, ResourceBindingModel.Improved, true, true),
+                out _window,
+                out _graphicsDevice);
 
-        private void RenderLoop()
-        {
+            _window.Resizable = false;
+
+            _commandList = _graphicsDevice.ResourceFactory.CreateCommandList();
+            _controller = new ImGuiController(_graphicsDevice, _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription, _window.Width, _window.Height);
+
+            _hotkey.Start();
+
+            var stylePtr = ImGui.GetStyle();
+            SetupImGuiStyle(ref stylePtr);
+
             while (_window.Exists)
             {
-                var snapshot = _window.PumpEvents();
+                InputSnapshot snapshot = _window.PumpEvents();
+                
                 if (!_window.Exists) break;
 
                 _controller.Update(1f / 60f, snapshot);
 
-                UpdateFeatures();
-
-                if (_menuVisible)
+                Update();
+                
+                _commandList.Begin();
+                _commandList.SetFramebuffer(_graphicsDevice.MainSwapchain.Framebuffer);
+                _commandList.ClearColorTarget(0, new RgbaFloat(0.04f, 0.05f, 0.07f, 0.95f));
+                
+                if (_menuOpen)
                 {
-                    DrawMenu();
+                    RenderUI();
                 }
 
-                _cl.Begin();
-                _cl.SetFramebuffer(_gd.MainSwapchain.Framebuffer);
-                _cl.ClearColorTarget(0, new RgbaFloat(0, 0, 0, 0));
-                _controller.Render(_gd, _cl);
-                _cl.End();
-                _gd.SubmitCommands(_cl);
-                _gd.SwapBuffers(_gd.MainSwapchain);
+                _controller.Render(_graphicsDevice, _commandList);
+                _commandList.End();
+                _graphicsDevice.SubmitCommands(_commandList);
+                _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
 
                 Thread.Sleep(16);
             }
+
+            _graphicsDevice.WaitForIdle();
+            _controller.Dispose();
+            _commandList.Dispose();
+            _graphicsDevice.Dispose();
         }
 
-        private void UpdateFeatures()
+        private void Update()
         {
-            _noclip.Update();
-            _fly.Update();
             _speedHack.Update();
+            _fly.Update();
             _superJump.Update();
-            _radarHack.Update();
             _aimbot.Update();
+            _radarHack.Update();
+            _noclip.Update();
         }
 
-        private void DrawMenu()
+        private void RenderUI()
         {
-            ImGui.SetNextWindowSize(new Vector2(700, 500), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowPos(new Vector2(50, 50), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowPos(Vector2.Zero);
+            ImGui.SetNextWindowSize(new Vector2(1100, 750));
 
-            if (ImGui.Begin("APO's Test Executor v1.0.0", ImGuiWindowFlags.NoCollapse))
+            ImGui.Begin("##MainWindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove);
+
+            RenderHeader();
+            RenderTabs();
+            
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            switch (_selectedTab)
             {
-                ImGui.Text($"FPS: {ImGui.GetIO().Framerate:F1}");
-                ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "| Press INSERT to toggle menu");
-                
-                ImGui.Separator();
-
-                if (ImGui.BeginTabBar("MainTabs"))
-                {
-                    if (ImGui.BeginTabItem("Combat"))
-                    {
-                        DrawCombatTab();
-                        ImGui.EndTabItem();
-                    }
-
-                    if (ImGui.BeginTabItem("Movement"))
-                    {
-                        DrawMovementTab();
-                        ImGui.EndTabItem();
-                    }
-
-                    if (ImGui.BeginTabItem("Visual"))
-                    {
-                        DrawVisualTab();
-                        ImGui.EndTabItem();
-                    }
-
-                    if (ImGui.BeginTabItem("Teleport"))
-                    {
-                        DrawTeleportTab();
-                        ImGui.EndTabItem();
-                    }
-
-                    if (ImGui.BeginTabItem("Misc"))
-                    {
-                        DrawMiscTab();
-                        ImGui.EndTabItem();
-                    }
-
-                    ImGui.EndTabBar();
-                }
+                case 0: RenderMovementTab(); break;
+                case 1: RenderCombatTab(); break;
+                case 2: RenderVisualTab(); break;
+                case 3: RenderTeleportTab(); break;
             }
+
+            RenderFooter();
+
             ImGui.End();
         }
 
-        private void DrawCombatTab()
+        private void RenderHeader()
         {
-            ImGui.BeginChild("CombatChild", new Vector2(0, 0), true);
+            ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[0]);
+            
+            var textColor = new Vector4(0f, 1f, 0.25f, 1f);
+            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+            ImGui.SetCursorPosY(20);
+            
+            var title = "EXECUTOR";
+            var titleSize = ImGui.CalcTextSize(title);
+            ImGui.SetCursorPosX((1100 - titleSize.X) / 2);
+            ImGui.Text(title);
+            
+            ImGui.PopStyleColor();
+            ImGui.PopFont();
 
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "AIMBOT");
+            ImGui.SetCursorPosY(55);
+            var subtitle = "FIVEM TESTING SUITE";
+            var subtitleSize = ImGui.CalcTextSize(subtitle);
+            ImGui.SetCursorPosX((1100 - subtitleSize.X) / 2);
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.48f, 0.55f, 0.58f, 1f));
+            ImGui.Text(subtitle);
+            ImGui.PopStyleColor();
+
+            ImGui.SetCursorPosY(80);
             ImGui.Separator();
+            ImGui.Spacing();
+        }
+
+        private void RenderTabs()
+        {
+            ImGui.SetCursorPosY(100);
+            
+            var tabWidth = 250f;
+            var spacing = 20f;
+            var totalWidth = (tabWidth * 4) + (spacing * 3);
+            ImGui.SetCursorPosX((1100 - totalWidth) / 2);
+
+            if (TabButton("MOVEMENT", 0, tabWidth)) _selectedTab = 0;
+            ImGui.SameLine(0, spacing);
+            if (TabButton("COMBAT", 1, tabWidth)) _selectedTab = 1;
+            ImGui.SameLine(0, spacing);
+            if (TabButton("VISUALS", 2, tabWidth)) _selectedTab = 2;
+            ImGui.SameLine(0, spacing);
+            if (TabButton("TELEPORT", 3, tabWidth)) _selectedTab = 3;
+        }
+
+        private bool TabButton(string label, int tabIndex, float width)
+        {
+            var isActive = _selectedTab == tabIndex;
+            
+            if (isActive)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0f, 1f, 0.25f, 0.3f));
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0f, 1f, 0.25f, 1f));
+            }
+            else
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0f, 1f, 0.25f, 0.05f));
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.6f, 0.6f, 0.6f, 1f));
+            }
+
+            var result = ImGui.Button(label, new Vector2(width, 40));
+            
+            ImGui.PopStyleColor(2);
+            
+            return result;
+        }
+
+        private void RenderMovementTab()
+        {
+            ImGui.BeginChild("MovementTab", new Vector2(1060, 530), true);
+
+            ImGui.Columns(2, "MovementColumns", false);
+            ImGui.SetColumnWidth(0, 520);
+            ImGui.SetColumnWidth(1, 520);
+
+            RenderSpeedHack();
+            ImGui.NextColumn();
+            RenderNoclip();
+            ImGui.NextColumn();
+            RenderFlyMode();
+            ImGui.NextColumn();
+            RenderSuperJump();
+
+            ImGui.Columns(1);
+            ImGui.EndChild();
+        }
+
+        private void RenderSpeedHack()
+        {
+            ImGui.BeginChild("SpeedHack", new Vector2(500, 130), true);
+            
+            ImGui.Text("SPEED MULTIPLIER");
+            ImGui.SameLine(380);
+            StatusBadge(_speedHack.Enabled);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            float multiplier = _speedHack.Multiplier;
+            ImGui.SetNextItemWidth(480);
+            ImGui.SliderFloat("##SpeedSlider", ref multiplier, 1.0f, 5.0f, $"{multiplier:F1}x");
+            _speedHack.Multiplier = multiplier;
+
+            ImGui.Spacing();
+            
+            if (ImGui.Button(_speedHack.Enabled ? "DISABLE" : "ENABLE", new Vector2(480, 30)))
+            {
+                _speedHack.Enabled = !_speedHack.Enabled;
+            }
+
+            ImGui.EndChild();
+        }
+
+        private void RenderNoclip()
+        {
+            ImGui.BeginChild("Noclip", new Vector2(500, 130), true);
+            
+            ImGui.Text("NOCLIP");
+            ImGui.SameLine(380);
+            StatusBadge(_noclip.Enabled);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            float speed = _noclip.Speed;
+            ImGui.SetNextItemWidth(480);
+            ImGui.SliderFloat("##NoclipSlider", ref speed, 0.5f, 10.0f, $"{speed:F1}");
+            _noclip.Speed = speed;
+
+            ImGui.Spacing();
+            
+            if (ImGui.Button(_noclip.Enabled ? "DISABLE" : "ENABLE", new Vector2(480, 30)))
+            {
+                _noclip.Enabled = !_noclip.Enabled;
+            }
+
+            ImGui.EndChild();
+        }
+
+        private void RenderFlyMode()
+        {
+            ImGui.BeginChild("FlyMode", new Vector2(500, 130), true);
+            
+            ImGui.Text("FLY MODE");
+            ImGui.SameLine(380);
+            StatusBadge(_fly.Enabled);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            float speed = _fly.Speed;
+            ImGui.SetNextItemWidth(480);
+            ImGui.SliderFloat("##FlySlider", ref speed, 1.0f, 20.0f, $"{speed:F1}");
+            _fly.Speed = speed;
+
+            ImGui.Spacing();
+            
+            if (ImGui.Button(_fly.Enabled ? "DISABLE" : "ENABLE", new Vector2(480, 30)))
+            {
+                _fly.Enabled = !_fly.Enabled;
+            }
+
+            ImGui.EndChild();
+        }
+
+        private void RenderSuperJump()
+        {
+            ImGui.BeginChild("SuperJump", new Vector2(500, 130), true);
+            
+            ImGui.Text("SUPER JUMP");
+            ImGui.SameLine(380);
+            StatusBadge(_superJump.Enabled);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            float multiplier = _superJump.Multiplier;
+            ImGui.SetNextItemWidth(480);
+            ImGui.SliderFloat("##JumpSlider", ref multiplier, 1.0f, 10.0f, $"{multiplier:F1}x");
+            _superJump.Multiplier = multiplier;
+
+            ImGui.Spacing();
+            
+            if (ImGui.Button(_superJump.Enabled ? "DISABLE" : "ENABLE", new Vector2(480, 30)))
+            {
+                _superJump.Enabled = !_superJump.Enabled;
+            }
+
+            ImGui.EndChild();
+        }
+
+        private void RenderCombatTab()
+        {
+            ImGui.BeginChild("CombatTab", new Vector2(1060, 530), true);
+
+            RenderAimbot();
+            ImGui.Spacing();
+            RenderRadarHack();
+
+            ImGui.EndChild();
+        }
+
+        private void RenderAimbot()
+        {
+            ImGui.BeginChild("Aimbot", new Vector2(1040, 320), true);
+            
+            ImGui.Text("AIMBOT CONFIGURATION");
+            ImGui.SameLine(920);
+            StatusBadge(_aimbot.Enabled);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            ImGui.Columns(2, "AimbotCols", false);
 
             bool aimbotEnabled = _aimbot.Enabled;
             if (ImGui.Checkbox("Enable Aimbot", ref aimbotEnabled))
                 _aimbot.Enabled = aimbotEnabled;
+            
+            bool silentAim = _aimbot.SilentAim;
+            if (ImGui.Checkbox("Silent Aim", ref silentAim))
+                _aimbot.SilentAim = silentAim;
+            
+            bool smoothAim = _aimbot.SmoothAim;
+            if (ImGui.Checkbox("Smooth Aim", ref smoothAim))
+                _aimbot.SmoothAim = smoothAim;
 
-            if (_aimbot.Enabled)
+            float fov = _aimbot.FOV;
+            ImGui.SetNextItemWidth(250);
+            ImGui.SliderFloat("FOV", ref fov, 10f, 180f, $"{fov:F0}°");
+            _aimbot.FOV = fov;
+
+            ImGui.NextColumn();
+
+            float smoothSpeed = _aimbot.SmoothSpeed;
+            ImGui.SetNextItemWidth(250);
+            ImGui.SliderFloat("Smooth Speed", ref smoothSpeed, 1f, 20f, $"{smoothSpeed:F1}");
+            _aimbot.SmoothSpeed = smoothSpeed;
+
+            float maxDist = _aimbot.MaxDistance;
+            ImGui.SetNextItemWidth(250);
+            ImGui.SliderFloat("Max Distance", ref maxDist, 50f, 1000f, $"{maxDist:F0}m");
+            _aimbot.MaxDistance = maxDist;
+
+            ImGui.Text("Target Bone:");
+            ImGui.SameLine();
+            
+            int selectedBone = _aimbot.TargetBone == Offsets.BoneIds.Head ? 0 : 
+                              _aimbot.TargetBone == Offsets.BoneIds.Neck ? 1 : 2;
+            
+            ImGui.SetNextItemWidth(250);
+            if (ImGui.Combo("##TargetBone", ref selectedBone, "Head\0Neck\0Chest\0"))
             {
-                ImGui.Indent();
-
-                bool silentAim = _aimbot.SilentAim;
-                if (ImGui.Checkbox("Silent Aim", ref silentAim))
-                    _aimbot.SilentAim = silentAim;
-
-                bool smoothAim = _aimbot.SmoothAim;
-                if (ImGui.Checkbox("Smooth Aim", ref smoothAim))
-                    _aimbot.SmoothAim = smoothAim;
-
-                if (_aimbot.SmoothAim)
-                {
-                    float smoothSpeed = _aimbot.SmoothSpeed;
-                    if (ImGui.SliderFloat("Smooth Speed", ref smoothSpeed, 1f, 20f))
-                        _aimbot.SmoothSpeed = smoothSpeed;
-                }
-
-                float fov = _aimbot.FOV;
-                if (ImGui.SliderFloat("FOV", ref fov, 10f, 180f))
-                    _aimbot.FOV = fov;
-
-                float maxDistance = _aimbot.MaxDistance;
-                if (ImGui.SliderFloat("Max Distance", ref maxDistance, 50f, 1000f))
-                    _aimbot.MaxDistance = maxDistance;
-
-                ImGui.Text("Target Bone:");
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Head", _aimbot.TargetBone == Offsets.BoneIds.Head))
-                    _aimbot.TargetBone = Offsets.BoneIds.Head;
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Neck", _aimbot.TargetBone == Offsets.BoneIds.Neck))
-                    _aimbot.TargetBone = Offsets.BoneIds.Neck;
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Chest", _aimbot.TargetBone == Offsets.BoneIds.Spine3))
-                    _aimbot.TargetBone = Offsets.BoneIds.Spine3;
-
-                ImGui.Unindent();
+                _aimbot.TargetBone = selectedBone == 0 ? Offsets.BoneIds.Head :
+                                    selectedBone == 1 ? Offsets.BoneIds.Neck :
+                                    Offsets.BoneIds.Spine3;
             }
 
+            ImGui.Columns(1);
             ImGui.EndChild();
         }
 
-        private void DrawMovementTab()
+        private void RenderRadarHack()
         {
-            ImGui.BeginChild("MovementChild", new Vector2(0, 0), true);
+            ImGui.BeginChild("Radar", new Vector2(1040, 140), true);
+            
+            ImGui.Text("RADAR MANIPULATION");
+            ImGui.SameLine(920);
+            StatusBadge(_radarHack.Enabled);
 
-            // Fly
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "FLY");
+            ImGui.Spacing();
             ImGui.Separator();
-
-            bool flyEnabled = _fly.Enabled;
-            if (ImGui.Checkbox("Enable Fly", ref flyEnabled))
-                _fly.Enabled = flyEnabled;
-
-            if (_fly.Enabled)
-            {
-                ImGui.Indent();
-                float flySpeed = _fly.Speed;
-                if (ImGui.SliderFloat("Fly Speed", ref flySpeed, 1f, 20f))
-                    _fly.Speed = flySpeed;
-
-                ImGui.Text("Controls: W/S = Forward/Back, SPACE/CTRL = Up/Down");
-                ImGui.Unindent();
-            }
-
             ImGui.Spacing();
-            ImGui.Spacing();
-
-            // Noclip
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "NOCLIP");
-            ImGui.Separator();
-
-            bool noclipEnabled = _noclip.Enabled;
-            if (ImGui.Checkbox("Enable Noclip", ref noclipEnabled))
-                _noclip.Enabled = noclipEnabled;
-
-            if (_noclip.Enabled)
-            {
-                ImGui.Indent();
-                float noclipSpeed = _noclip.Speed;
-                if (ImGui.SliderFloat("Noclip Speed", ref noclipSpeed, 0.5f, 10f))
-                    _noclip.Speed = noclipSpeed;
-                ImGui.Unindent();
-            }
-
-            ImGui.Spacing();
-            ImGui.Spacing();
-
-            // Speed Hack
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "SPEED HACK");
-            ImGui.Separator();
-
-            bool speedEnabled = _speedHack.Enabled;
-            if (ImGui.Checkbox("Enable Speed Hack", ref speedEnabled))
-                _speedHack.Enabled = speedEnabled;
-
-            if (_speedHack.Enabled)
-            {
-                ImGui.Indent();
-                float speedMultiplier = _speedHack.Multiplier;
-                if (ImGui.SliderFloat("Speed Multiplier", ref speedMultiplier, 1f, 5f))
-                    _speedHack.Multiplier = speedMultiplier;
-                ImGui.Unindent();
-            }
-
-            ImGui.Spacing();
-            ImGui.Spacing();
-
-            // Super Jump
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "SUPER JUMP");
-            ImGui.Separator();
-
-            bool jumpEnabled = _superJump.Enabled;
-            if (ImGui.Checkbox("Enable Super Jump", ref jumpEnabled))
-                _superJump.Enabled = jumpEnabled;
-
-            if (_superJump.Enabled)
-            {
-                ImGui.Indent();
-                float jumpMultiplier = _superJump.Multiplier;
-                if (ImGui.SliderFloat("Jump Multiplier", ref jumpMultiplier, 1f, 10f))
-                    _superJump.Multiplier = jumpMultiplier;
-                ImGui.Unindent();
-            }
-
-            ImGui.EndChild();
-        }
-
-        private void DrawVisualTab()
-        {
-            ImGui.BeginChild("VisualChild", new Vector2(0, 0), true);
-
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "ESP");
-            ImGui.Separator();
-
-            bool espEnabled = _esp.Enabled;
-            if (ImGui.Checkbox("Enable ESP", ref espEnabled))
-                _esp.Enabled = espEnabled;
-
-            if (_esp.Enabled)
-            {
-                ImGui.Indent();
-
-                bool showHealth = _esp.ShowHealth;
-                if (ImGui.Checkbox("Show Health", ref showHealth))
-                    _esp.ShowHealth = showHealth;
-
-                bool showArmor = _esp.ShowArmor;
-                if (ImGui.Checkbox("Show Armor", ref showArmor))
-                    _esp.ShowArmor = showArmor;
-
-                bool showName = _esp.ShowName;
-                if (ImGui.Checkbox("Show Name", ref showName))
-                    _esp.ShowName = showName;
-
-                bool showDistance = _esp.ShowDistance;
-                if (ImGui.Checkbox("Show Distance", ref showDistance))
-                    _esp.ShowDistance = showDistance;
-
-                bool showSkeleton = _esp.ShowSkeleton;
-                if (ImGui.Checkbox("Show Skeleton", ref showSkeleton))
-                    _esp.ShowSkeleton = showSkeleton;
-
-                float maxDistance = _esp.MaxDistance;
-                if (ImGui.SliderFloat("Max Distance", ref maxDistance, 50f, 1000f))
-                    _esp.MaxDistance = maxDistance;
-
-                ImGui.Unindent();
-
-                ImGui.Spacing();
-                ImGui.Text($"Players in range: {_esp.GetPlayerList().Count}");
-            }
-
-            ImGui.Spacing();
-            ImGui.Spacing();
-
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "RADAR HACK");
-            ImGui.Separator();
 
             bool radarEnabled = _radarHack.Enabled;
             if (ImGui.Checkbox("Enable Radar Hack", ref radarEnabled))
                 _radarHack.Enabled = radarEnabled;
-
-            if (_radarHack.Enabled)
-            {
-                ImGui.Indent();
-
-                bool showInvisible = _radarHack.ShowInvisiblePlayers;
-                if (ImGui.Checkbox("Show Invisible Players", ref showInvisible))
-                    _radarHack.ShowInvisiblePlayers = showInvisible;
-
-                bool showAllBlips = _radarHack.ShowAllBlips;
-                if (ImGui.Checkbox("Show All Blips", ref showAllBlips))
-                    _radarHack.ShowAllBlips = showAllBlips;
-
-                ImGui.Unindent();
-            }
-
-            ImGui.EndChild();
-        }
-
-        private void DrawTeleportTab()
-        {
-            ImGui.BeginChild("TeleportChild", new Vector2(0, 0), true);
-
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "TELEPORT");
-            ImGui.Separator();
-
-            var currentPos = _teleport.GetCurrentPosition();
-            ImGui.Text($"Current Position: X: {currentPos.x:F2}, Y: {currentPos.y:F2}, Z: {currentPos.z:F2}");
-
-            ImGui.Spacing();
-
-            ImGui.InputFloat("X", ref _teleportCoords[0]);
-            ImGui.InputFloat("Y", ref _teleportCoords[1]);
-            ImGui.InputFloat("Z", ref _teleportCoords[2]);
-
-            if (ImGui.Button("Teleport to Coordinates", new Vector2(-1, 30)))
-            {
-                _teleport.TeleportToCoordinates(_teleportCoords[0], _teleportCoords[1], _teleportCoords[2]);
-            }
-
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Spacing();
-
-            ImGui.Text("Quick Teleport:");
             
-            float distance = 10f;
-            ImGui.SliderFloat("Distance", ref distance, 5f, 100f);
-
-            if (ImGui.Button("Teleport Forward", new Vector2(-1, 30)))
-            {
-                _teleport.TeleportForward(distance);
-            }
+            ImGui.SameLine(300);
+            
+            bool showInvisible = _radarHack.ShowInvisiblePlayers;
+            if (ImGui.Checkbox("Show Invisible Players", ref showInvisible))
+                _radarHack.ShowInvisiblePlayers = showInvisible;
+            
+            ImGui.SameLine(600);
+            
+            bool showAllBlips = _radarHack.ShowAllBlips;
+            if (ImGui.Checkbox("Show All Blips", ref showAllBlips))
+                _radarHack.ShowAllBlips = showAllBlips;
 
             ImGui.EndChild();
         }
 
-        private void DrawMiscTab()
+        private void RenderVisualTab()
         {
-            ImGui.BeginChild("MiscChild", new Vector2(0, 0), true);
+            ImGui.BeginChild("VisualTab", new Vector2(1060, 530), true);
 
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "INFORMATION");
-            ImGui.Separator();
-
-            ImGui.Text("Test Executor for FiveM Anti-Cheat");
-            ImGui.Text("Created by APO");
-            ImGui.Spacing();
-            ImGui.Text("Features:");
-            ImGui.BulletText("Aimbot (Silent & Smooth)");
-            ImGui.BulletText("ESP (Health, Armor, Skeleton)");
-            ImGui.BulletText("Fly & Noclip");
-            ImGui.BulletText("Speed Hack & Super Jump");
-            ImGui.BulletText("Teleport");
-            ImGui.BulletText("Radar Hack");
+            ImGui.Text("ESP CONFIGURATION");
+            ImGui.SameLine(940);
+            StatusBadge(_esp.Enabled);
 
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
 
-            ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1.0f), "CONTROLS");
-            ImGui.Separator();
-            ImGui.Text("INSERT = Toggle Menu");
-            ImGui.Text("W/A/S/D = Movement (Fly/Noclip)");
-            ImGui.Text("SPACE = Up (Fly/Noclip)");
-            ImGui.Text("CTRL = Down (Fly/Noclip)");
+            ImGui.Columns(2, "ESPCols", false);
+
+            bool espEnabled = _esp.Enabled;
+            if (ImGui.Checkbox("Enable ESP", ref espEnabled))
+                _esp.Enabled = espEnabled;
+            
+            bool showHealth = _esp.ShowHealth;
+            if (ImGui.Checkbox("Show Health", ref showHealth))
+                _esp.ShowHealth = showHealth;
+            
+            bool showArmor = _esp.ShowArmor;
+            if (ImGui.Checkbox("Show Armor", ref showArmor))
+                _esp.ShowArmor = showArmor;
+            
+            bool showName = _esp.ShowName;
+            if (ImGui.Checkbox("Show Name", ref showName))
+                _esp.ShowName = showName;
+
+            ImGui.NextColumn();
+
+            bool showDistance = _esp.ShowDistance;
+            if (ImGui.Checkbox("Show Distance", ref showDistance))
+                _esp.ShowDistance = showDistance;
+            
+            bool showSkeleton = _esp.ShowSkeleton;
+            if (ImGui.Checkbox("Show Skeleton", ref showSkeleton))
+                _esp.ShowSkeleton = showSkeleton;
+
+            float maxDist = _esp.MaxDistance;
+            ImGui.SetNextItemWidth(250);
+            ImGui.SliderFloat("Max Distance", ref maxDist, 50f, 1000f, $"{maxDist:F0}m");
+            _esp.MaxDistance = maxDist;
+
+            ImGui.Columns(1);
 
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
 
-            if (ImGui.Button("Exit Executor", new Vector2(-1, 40)))
-            {
-                Environment.Exit(0);
-            }
+            ImGui.Text("ESP PREVIEW (Players in range will be shown)");
 
             ImGui.EndChild();
+        }
+
+        private void RenderTeleportTab()
+        {
+            ImGui.BeginChild("TeleportTab", new Vector2(1060, 530), true);
+
+            ImGui.Columns(2, "TeleportCols", false);
+
+            ImGui.BeginChild("TPForward", new Vector2(500, 150), true);
+            ImGui.Text("FORWARD TELEPORT");
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+            
+            ImGui.SetNextItemWidth(480);
+            ImGui.InputFloat("Distance (m)", ref _tpDistance);
+            ImGui.Spacing();
+            
+            if (ImGui.Button("EXECUTE", new Vector2(480, 35)))
+            {
+                _teleport.TeleportForward(_tpDistance);
+            }
+            ImGui.EndChild();
+
+            ImGui.NextColumn();
+
+            ImGui.BeginChild("TPCoords", new Vector2(500, 150), true);
+            ImGui.Text("COORDINATE TELEPORT");
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+            
+            ImGui.Columns(3, "CoordInputs", false);
+            ImGui.SetNextItemWidth(150);
+            ImGui.InputFloat("##TPX", ref _tpX);
+            ImGui.NextColumn();
+            ImGui.SetNextItemWidth(150);
+            ImGui.InputFloat("##TPY", ref _tpY);
+            ImGui.NextColumn();
+            ImGui.SetNextItemWidth(150);
+            ImGui.InputFloat("##TPZ", ref _tpZ);
+            
+            ImGui.Columns(1);
+            ImGui.Spacing();
+            
+            if (ImGui.Button("EXECUTE", new Vector2(480, 35)))
+            {
+                _teleport.TeleportToCoordinates(_tpX, _tpY, _tpZ);
+            }
+            ImGui.EndChild();
+
+            ImGui.Columns(1);
+            ImGui.EndChild();
+        }
+
+        private void RenderFooter()
+        {
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            if (ImGui.Button("EMERGENCY STOP - DISABLE ALL", new Vector2(1060, 45)))
+            {
+                _speedHack.Enabled = false;
+                _noclip.Enabled = false;
+                _fly.Enabled = false;
+                _superJump.Enabled = false;
+                _esp.Enabled = false;
+                _aimbot.Enabled = false;
+                _radarHack.Enabled = false;
+            }
+
+            ImGui.Spacing();
+            var info = "Press INSERT to toggle | Randomized values for detection evasion";
+            var infoSize = ImGui.CalcTextSize(info);
+            ImGui.SetCursorPosX((1100 - infoSize.X) / 2);
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.48f, 0.55f, 0.58f, 1f));
+            ImGui.Text(info);
+            ImGui.PopStyleColor();
+        }
+
+        private void StatusBadge(bool enabled)
+        {
+            if (enabled)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0f, 1f, 0.25f, 1f));
+                ImGui.Text("ACTIVE");
+            }
+            else
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.48f, 0.55f, 0.58f, 1f));
+                ImGui.Text("INACTIVE");
+            }
+            ImGui.PopStyleColor();
+        }
+
+        private void SetupImGuiStyle(ref ImGuiStylePtr style)
+        {
+            style.WindowPadding = new Vector2(20, 20);
+            style.WindowRounding = 0;
+            style.FramePadding = new Vector2(10, 8);
+            style.FrameRounding = 2;
+            style.ItemSpacing = new Vector2(10, 10);
+            style.ItemInnerSpacing = new Vector2(10, 10);
+            style.ScrollbarSize = 12;
+            style.ScrollbarRounding = 2;
+            style.GrabMinSize = 12;
+            style.GrabRounding = 2;
+
+            var colors = style.Colors;
+            colors[(int)ImGuiCol.WindowBg] = new Vector4(0.06f, 0.08f, 0.11f, 0.95f);
+            colors[(int)ImGuiCol.ChildBg] = new Vector4(0.06f, 0.08f, 0.10f, 1.00f);
+            colors[(int)ImGuiCol.Border] = new Vector4(0f, 1f, 0.25f, 0.2f);
+            colors[(int)ImGuiCol.FrameBg] = new Vector4(0f, 1f, 0.25f, 0.1f);
+            colors[(int)ImGuiCol.FrameBgHovered] = new Vector4(0f, 1f, 0.25f, 0.15f);
+            colors[(int)ImGuiCol.FrameBgActive] = new Vector4(0f, 1f, 0.25f, 0.2f);
+            colors[(int)ImGuiCol.SliderGrab] = new Vector4(0f, 1f, 0.25f, 1.0f);
+            colors[(int)ImGuiCol.SliderGrabActive] = new Vector4(0f, 1f, 0.25f, 0.8f);
+            colors[(int)ImGuiCol.Button] = new Vector4(0f, 1f, 0.25f, 0.15f);
+            colors[(int)ImGuiCol.ButtonHovered] = new Vector4(0f, 1f, 0.25f, 0.25f);
+            colors[(int)ImGuiCol.ButtonActive] = new Vector4(0f, 1f, 0.25f, 0.35f);
+            colors[(int)ImGuiCol.Header] = new Vector4(0f, 1f, 0.25f, 0.2f);
+            colors[(int)ImGuiCol.HeaderHovered] = new Vector4(0f, 1f, 0.25f, 0.3f);
+            colors[(int)ImGuiCol.HeaderActive] = new Vector4(0f, 1f, 0.25f, 0.4f);
+            colors[(int)ImGuiCol.Separator] = new Vector4(0f, 1f, 0.25f, 0.2f);
+            colors[(int)ImGuiCol.Text] = new Vector4(0.91f, 0.96f, 0.97f, 1.0f);
+            colors[(int)ImGuiCol.CheckMark] = new Vector4(0f, 1f, 0.25f, 1.0f);
         }
     }
 }
