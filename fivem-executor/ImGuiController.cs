@@ -146,30 +146,35 @@ namespace FiveM_AntiCheat_Executor
             if (resourceName.Contains("vertex"))
             {
                 return System.Text.Encoding.UTF8.GetBytes(@"
-                    #version 330 core
-                    uniform ProjectionMatrixBuffer { mat4 projection_matrix; };
-                    in vec2 in_position;
-                    in vec2 in_texCoord;
-                    in vec4 in_color;
-                    out vec2 fsin_texCoord;
-                    out vec4 fsin_color;
-                    void main() {
-                        gl_Position = projection_matrix * vec4(in_position, 0, 1);
-                        fsin_texCoord = in_texCoord;
-                        fsin_color = in_color;
-                    }");
+#version 330 core
+layout(std140) uniform ProjectionMatrixBuffer 
+{ 
+    mat4 projection_matrix; 
+};
+layout(location = 0) in vec2 in_position;
+layout(location = 1) in vec2 in_texCoord;
+layout(location = 2) in vec4 in_color;
+out vec2 fsin_texCoord;
+out vec4 fsin_color;
+void main() 
+{
+    gl_Position = projection_matrix * vec4(in_position, 0, 1);
+    fsin_texCoord = in_texCoord;
+    fsin_color = in_color;
+}");
             }
             else
             {
                 return System.Text.Encoding.UTF8.GetBytes(@"
-                    #version 330 core
-                    uniform sampler2D SourceTexture;
-                    in vec2 fsin_texCoord;
-                    in vec4 fsin_color;
-                    out vec4 fsout_color;
-                    void main() {
-                        fsout_color = fsin_color * texture(SourceTexture, fsin_texCoord);
-                    }");
+#version 330 core
+uniform sampler2D SourceTexture;
+in vec2 fsin_texCoord;
+in vec4 fsin_color;
+out vec4 fsout_color;
+void main() 
+{
+    fsout_color = fsin_color * texture(SourceTexture, fsin_texCoord);
+}");
             }
         }
 
