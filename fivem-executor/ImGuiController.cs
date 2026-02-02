@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using ImGuiNET;
 using Veldrid;
 
@@ -8,7 +10,6 @@ namespace FiveM_AntiCheat_Executor
     public class ImGuiController : IDisposable
     {
         private GraphicsDevice _gd;
-        private bool _frameBegun;
         private DeviceBuffer _vertexBuffer = null!;
         private DeviceBuffer _indexBuffer = null!;
         private DeviceBuffer _projMatrixBuffer = null!;
@@ -34,19 +35,17 @@ namespace FiveM_AntiCheat_Executor
 
             IntPtr context = ImGui.CreateContext();
             ImGui.SetCurrentContext(context);
-
+            
             var io = ImGui.GetIO();
             io.Fonts.AddFontDefault();
             io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
-            io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
-
+            
             CreateDeviceResources(gd, outputDescription);
             SetKeyMappings();
 
             SetPerFrameImGuiData(1f / 60f);
 
             ImGui.NewFrame();
-            _frameBegun = true;
         }
 
         public void WindowResized(int width, int height)
@@ -64,12 +63,10 @@ namespace FiveM_AntiCheat_Executor
         {
             _gd = gd;
             ResourceFactory factory = gd.ResourceFactory;
-
             _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
             _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
             _indexBuffer = factory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
             _indexBuffer.Name = "ImGui.NET Index Buffer";
-
             RecreateFontDeviceTexture(gd);
 
             _projMatrixBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
@@ -91,8 +88,8 @@ namespace FiveM_AntiCheat_Executor
             _layout = factory.CreateResourceLayout(new ResourceLayoutDescription(
                 new ResourceLayoutElementDescription("ProjectionMatrixBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
             _textureLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
-                new ResourceLayoutElementDescription("SourceTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
-                new ResourceLayoutElementDescription("SourceSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
+                new ResourceLayoutElementDescription("FontTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+                new ResourceLayoutElementDescription("FontSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
 
             GraphicsPipelineDescription pd = new GraphicsPipelineDescription(
                 BlendStateDescription.SingleAlphaBlend,
@@ -106,9 +103,8 @@ namespace FiveM_AntiCheat_Executor
             _pipeline = factory.CreateGraphicsPipeline(ref pd);
 
             _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout, _projMatrixBuffer));
-
             _fontTextureResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView,
-                gd.LinearSampler));
+                gd.PointSampler));
         }
 
         private byte[] LoadEmbeddedShaderCode(ResourceFactory factory, string name, ShaderStages stage)
@@ -142,43 +138,89 @@ namespace FiveM_AntiCheat_Executor
 
         private byte[] GetEmbeddedResourceBytes(string resourceName)
         {
-            // Fallback GLSL shaders
-            if (resourceName.Contains("vertex"))
+            string source = resourceName switch
             {
-                return System.Text.Encoding.UTF8.GetBytes(@"
+                "imgui-vertex.glsl"       => VertexShaderGLSL,
+                "imgui-frag.glsl"         => FragmentShaderGLSL,
+                "imgui-vertex.hlsl.bytes" => VertexShaderHLSL,
+                "imgui-frag.hlsl.bytes"   => FragmentShaderHLSL,
+                _ => throw new NotImplementedException($"No embedded shader for '{resourceName}'.")
+            };
+            return System.Text.Encoding.UTF8.GetBytes(source);
+        }
+
+        private const string VertexShaderGLSL = @"
 #version 330 core
-layout(std140) uniform ProjectionMatrixBuffer 
-{ 
-    mat4 projection_matrix; 
-};
+uniform ProjectionMatrixBuffer { mat4 projection_matrix; };
 layout(location = 0) in vec2 in_position;
 layout(location = 1) in vec2 in_texCoord;
 layout(location = 2) in vec4 in_color;
-out vec2 fsin_texCoord;
-out vec4 fsin_color;
-void main() 
+out vec4 color;
+out vec2 texCoord;
+void main()
 {
     gl_Position = projection_matrix * vec4(in_position, 0, 1);
-    fsin_texCoord = in_texCoord;
-    fsin_color = in_color;
-}");
-            }
-            else
-            {
-                return System.Text.Encoding.UTF8.GetBytes(@"
-#version 330 core
-uniform sampler2D SourceTexture;
-in vec2 fsin_texCoord;
-in vec4 fsin_color;
-out vec4 fsout_color;
-void main() 
-{
-    fsout_color = fsin_color * texture(SourceTexture, fsin_texCoord);
-}");
-            }
-        }
+    color = in_color;
+    texCoord = in_texCoord;
+}";
 
-        private void RecreateFontDeviceTexture(GraphicsDevice gd)
+        private const string FragmentShaderGLSL = @"
+#version 330 core
+uniform sampler2D FontTexture;
+in vec4 color;
+in vec2 texCoord;
+out vec4 outputColor;
+void main()
+{
+    outputColor = color * texture(FontTexture, texCoord);
+}";
+
+        private const string VertexShaderHLSL = @"
+cbuffer ProjectionMatrixBuffer : register(b0)
+{
+    float4x4 projection_matrix;
+};
+
+struct VertexInput
+{
+    float2 position : POSITION;
+    float2 texCoord : TEXCOORD0;
+    float4 color    : COLOR0;
+};
+
+struct PixelInput
+{
+    float4 position : SV_POSITION;
+    float4 color    : COLOR0;
+    float2 texCoord : TEXCOORD0;
+};
+
+PixelInput main(VertexInput input)
+{
+    PixelInput output;
+    output.position = mul(projection_matrix, float4(input.position, 0.0f, 1.0f));
+    output.color    = input.color;
+    output.texCoord = input.texCoord;
+    return output;
+}";
+
+        private const string FragmentShaderHLSL = @"
+Texture2D FontTexture : register(t0);
+SamplerState FontSampler : register(s0);
+
+struct PixelInput
+{
+    float4 position : SV_POSITION;
+    float4 color    : COLOR0;
+    float2 texCoord : TEXCOORD0;
+};
+
+float4 main(PixelInput input) : SV_TARGET
+{
+    return input.color * FontTexture.Sample(FontSampler, input.texCoord);
+}";
+
+        public void RecreateFontDeviceTexture(GraphicsDevice gd)
         {
             ImGuiIOPtr io = ImGui.GetIO();
             io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
@@ -212,25 +254,15 @@ void main()
 
         public void Render(GraphicsDevice gd, CommandList cl)
         {
-            if (_frameBegun)
-            {
-                _frameBegun = false;
-                ImGui.Render();
-                RenderImDrawData(ImGui.GetDrawData(), gd, cl);
-            }
+            ImGui.Render();
+            RenderImDrawData(ImGui.GetDrawData(), gd, cl);
         }
 
         public void Update(float deltaSeconds, InputSnapshot snapshot)
         {
-            if (_frameBegun)
-            {
-                ImGui.Render();
-            }
-
             SetPerFrameImGuiData(deltaSeconds);
             UpdateImGuiInput(snapshot);
 
-            _frameBegun = true;
             ImGui.NewFrame();
         }
 
@@ -246,16 +278,12 @@ void main()
         {
             ImGuiIOPtr io = ImGui.GetIO();
 
-            Vector2 mousePosition = snapshot.MousePosition;
-
+            var mousePos = snapshot.MousePosition;
+            io.MousePos = mousePos;
             io.MouseDown[0] = snapshot.IsMouseDown(MouseButton.Left);
             io.MouseDown[1] = snapshot.IsMouseDown(MouseButton.Right);
             io.MouseDown[2] = snapshot.IsMouseDown(MouseButton.Middle);
-            io.MousePos = mousePosition;
-
-            float wheel = snapshot.WheelDelta;
-            io.MouseWheel = wheel;
-            io.MouseWheelH = 0f;
+            io.MouseWheel = snapshot.WheelDelta;
 
             foreach (char c in snapshot.KeyCharPresses)
             {
@@ -266,13 +294,21 @@ void main()
             {
                 io.KeysDown[(int)keyEvent.Key] = keyEvent.Down;
                 if (keyEvent.Key == Key.ControlLeft || keyEvent.Key == Key.ControlRight)
+                {
                     io.KeyCtrl = keyEvent.Down;
+                }
                 if (keyEvent.Key == Key.ShiftLeft || keyEvent.Key == Key.ShiftRight)
+                {
                     io.KeyShift = keyEvent.Down;
+                }
                 if (keyEvent.Key == Key.AltLeft || keyEvent.Key == Key.AltRight)
+                {
                     io.KeyAlt = keyEvent.Down;
+                }
                 if (keyEvent.Key == Key.WinLeft || keyEvent.Key == Key.WinRight)
+                {
                     io.KeySuper = keyEvent.Down;
+                }
             }
         }
 
@@ -310,8 +346,7 @@ void main()
                 return;
             }
 
-            uint vertexSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<ImDrawVert>();
-            uint totalVBSize = (uint)(draw_data.TotalVtxCount * vertexSize);
+            uint totalVBSize = (uint)(draw_data.TotalVtxCount * Unsafe.SizeOf<ImDrawVert>());
             if (totalVBSize > _vertexBuffer.SizeInBytes)
             {
                 _vertexBuffer.Dispose();
@@ -331,9 +366,9 @@ void main()
 
                 cl.UpdateBuffer(
                     _vertexBuffer,
-                    vertexOffsetInVertices * vertexSize,
+                    vertexOffsetInVertices * (uint)Unsafe.SizeOf<ImDrawVert>(),
                     cmd_list.VtxBuffer.Data,
-                    (uint)(cmd_list.VtxBuffer.Size * vertexSize));
+                    (uint)(cmd_list.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>()));
 
                 cl.UpdateBuffer(
                     _indexBuffer,
@@ -365,7 +400,6 @@ void main()
 
             int vtx_offset = 0;
             int idx_offset = 0;
-
             for (int n = 0; n < draw_data.CmdListsCount; n++)
             {
                 ImDrawListPtr cmd_list = draw_data.CmdLists[n];
